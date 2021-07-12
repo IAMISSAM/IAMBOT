@@ -12,4 +12,13 @@ bot = IAMBOT(
 )
 
 if __name__ == '__main__':
+    for ext in os.listdir("./modules/"):
+        if ext.endswith(".py") and not ext.startswith("_"):
+            try:
+                module_name = ext[:-3]
+                bot.load_extension(f'modules.{module_name}')
+                print(f'Module {module_name} chargé')
+            except Exception as e:
+                print(e)
+
     bot.run(os.getenv('IAMBOT_TOKEN'))
