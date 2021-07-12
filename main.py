@@ -1,11 +1,17 @@
 import os
 
 import discord
+from discord.ext import commands
 
 from core.BaseBot import IAMBOT
 
+
+def get_prefix(iambot, msg):
+    return commands.when_mentioned(iambot, msg) + list(iambot.prefix[msg.guild.id])
+
+
 bot = IAMBOT(
-    command_prefix='?',
+    command_prefix=get_prefix,
     case_insensitive=True,
     owner_id=853589947209482281,
     intents=discord.Intents.default()
