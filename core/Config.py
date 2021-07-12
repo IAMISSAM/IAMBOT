@@ -29,7 +29,10 @@ class Config(dict):
         pass
 
     def __delitem__(self, key):
-        self.config_db.reset(self.name, key, self.module)
+        try:
+            self.config_db.reset(self.name, key, self.module)
+        except KeyError:
+            pass
 
     def __getitem__(self, item):
         try:
@@ -38,7 +41,10 @@ class Config(dict):
             return self.default
 
     def __setitem__(self, key, value):
-        self.config_db.set(self.name, key, value, self.module)
+        try:
+            self.config_db.set(self.name, key, value, self.module)
+        except KeyError:
+            pass
 
 
 class ConfigDatabase:
@@ -53,13 +59,12 @@ class ConfigDatabase:
             self._database[guild_id] = {}
 
     def reset(self, name, guild_id, module=None):
-        try:
-            if module:
-                del self._database[guild_id][module][name]
-            else:
-                del self._database[guild_id][name]
-        except KeyError:
-            pass
+        if module:
+            del self._database[guild_id][module][name]
+        else:
+            del self._database[guild_id][name]
+        with open(f'config/{guild_id}.json', 'w') as f:
+            json.dump(self._database[guild_id], f)
 
     def get(self, name, guild_id, module=None):
         if module:
@@ -67,20 +72,23 @@ class ConfigDatabase:
         else:
             return self._database[guild_id][name]
 
-    def set(self, name, guild_id, value, module=None):
+    def get_or(self, name, guild_id, default, module=None):
         try:
-            if module:
-                self._database.setdefault(guild_id, {}).setdefault(module, {})[name] = value
-            else:
-                self._database.setdefault(guild_id, {})[name] = value
-            with open(f'config/{guild_id}.json', 'w') as f:
-                json.dump(self._database[guild_id], f)
+            return self.get(name, guild_id, module)
         except KeyError:
-            pass
+            return default
+
+    def set(self, name, guild_id, value, module=None):
+        if module:
+            self._database.setdefault(guild_id, {}).setdefault(module, {})[name] = value
+        else:
+            self._database.setdefault(guild_id, {})[name] = value
+        with open(f'config/{guild_id}.json', 'w') as f:
+            json.dump(self._database[guild_id], f)
 
     def add(self, name, config_type=ConfigType.STR, default=None, required=False,
             description=None, module=None):
-        config = Config(self, name, config_type, default, required, description, module)
+        config = Config(self, name, config_type, default, required or default is None, description, module)
 
         if module:
             self._configs.setdefault(module, {})[name] = config
@@ -88,3 +96,45 @@ class ConfigDatabase:
             self._configs[name] = config
 
         return config
+
+    def has_missing_required_config(self, guild_id, module_name):
+        if module_name not in self._configs:
+            return False
+
+        for config_name in self._configs[module_name]:
+            config = self._configs[module_name][config_name]
+            if config[guild_id] is None and config.default is None and config.required:
+                return True
+
+        return False
+
+    def get_module_configs(self, module):
+        if module not in self._configs:
+            return {}
+        else:
+            return self._configs[module]
+
+
+def config_to_string(config: Config, ctx):
+    description = ""
+    description += f'\n:gear: **__{config.name}{"*" if config.required else ""}__**:\n'
+    if config.description:
+        description += f':ledger: {config.description}\n'
+    value_emoji = ":1234:"
+    if config.config_type == ConfigType.BOOL:
+        value_emoji = ":question:"
+    elif config.config_type == ConfigType.STR:
+        value_emoji = ":abc:"
+    elif config.config_type == ConfigType.USER:
+        value_emoji = ":bust_in_silhouette:"
+    elif config.config_type == ConfigType.CHANNEL:
+        value_emoji = ":speech_balloon:"
+
+    value_str = config[ctx.guild.id]
+    if value_str and config.config_type == ConfigType.USER:
+        value_str = f'<@{value_str}>'
+    elif value_str and config.config_type == ConfigType.CHANNEL:
+        value_str = f'<#{value_str}>'
+
+    description += f'{value_emoji} {value_str}\n'
+    return description
