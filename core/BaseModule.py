@@ -12,7 +12,7 @@ class BaseModule(commands.Cog):
                                    description, self.qualified_name)
 
     async def cog_check(self, ctx):
-        return self.is_enabled(ctx.guild.id)
+        return ctx.guild is not None and self.is_enabled(ctx.guild.id)
 
     def is_enabled(self, guild_id):
         return self.bot.config.get_or("_enabled", guild_id, False, self.qualified_name)

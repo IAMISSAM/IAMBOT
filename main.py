@@ -7,7 +7,8 @@ from core.BaseBot import IAMBOT
 
 
 def get_prefix(iambot, msg):
-    return commands.when_mentioned(iambot, msg) + list(iambot.prefix[msg.guild.id])
+    return commands.when_mentioned(iambot, msg) + (
+        list(iambot.prefix[msg.guild.id]) if msg.guild is not None else list('?'))
 
 
 bot = IAMBOT(

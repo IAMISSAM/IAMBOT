@@ -10,7 +10,7 @@ class ConfigModule(commands.Cog):
         self.bot = bot
 
     async def cog_check(self, ctx: Context):
-        return getattr(ctx.author.guild_permissions, 'administrator')
+        return ctx.guild is not None and getattr(ctx.author.guild_permissions, 'administrator')
 
     @commands.group(invoke_without_command=True)
     async def modules(self, ctx: Context):
