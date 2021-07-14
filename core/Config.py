@@ -88,7 +88,7 @@ class ConfigDatabase:
 
     def add(self, name, config_type=ConfigType.STR, default=None, required=False,
             description=None, module=None):
-        config = Config(self, name, config_type, default, required or default is None, description, module)
+        config = Config(self, name, config_type, default, required, description, module)
 
         if module:
             self._configs.setdefault(module, {})[name] = config

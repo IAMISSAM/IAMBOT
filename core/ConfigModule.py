@@ -9,6 +9,9 @@ class ConfigModule(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    async def cog_check(self, ctx: Context):
+        return getattr(ctx.author.guild_permissions, 'administrator')
+
     @commands.group(invoke_without_command=True)
     async def modules(self, ctx: Context):
         description = ""
@@ -26,36 +29,39 @@ class ConfigModule(commands.Cog):
 
     @modules.command()
     async def enable(self, ctx: Context, module_name):
-        if module_name not in [e[8:] for e in self.bot.extensions]:
+        module = get_real_module_name(self.bot, module_name)
+        if module is None:
             await ctx.send(f'Module **{module_name}** invalide.')
+            return
+        if self.bot.config.has_missing_required_config(ctx.guild.id, module):
+            await ctx.send(f'Des paramètres requis sont manquants pour activer le module **{module}**.')
         else:
-            if self.bot.config.has_missing_required_config(ctx.guild.id, module_name):
-                await ctx.send(f'Des paramètres requis sont manquants pour activer le module **{module_name}**.')
-            else:
-                self.bot.config.set("_enabled", ctx.guild.id, True, module_name)
-                await ctx.send(f'Module **{module_name}** activé :white_check_mark:')
+            self.bot.config.set("_enabled", ctx.guild.id, True, module)
+            await ctx.send(f'Module **{module}** activé :white_check_mark:')
 
     @modules.command()
     async def disable(self, ctx: Context, module_name):
-        if module_name not in [e[8:] for e in self.bot.extensions]:
+        module = get_real_module_name(self.bot, module_name)
+        if module is None:
             await ctx.send(f'Module **{module_name}** invalide.')
-        else:
-            self.bot.config.set("_enabled", ctx.guild.id, False, module_name)
-            await ctx.send(f'Module **{module_name}** désactivé :x:')
+            return
+        self.bot.config.set("_enabled", ctx.guild.id, False, module)
+        await ctx.send(f'Module **{module}** désactivé :x:')
 
     @commands.group(invoke_without_command=True)
     async def config(self, ctx: Context, module_name: str):
-        if module_name not in [e[8:] for e in self.bot.extensions]:
+        module = next((e[8:] for e in self.bot.extensions if e[8:].lower() == module_name.lower()), None)
+        if module is None:
             await ctx.send(f'Module **{module_name}** invalide.')
             return
         description = ""
-        configs = self.bot.config.get_module_configs(module_name)
+        configs = self.bot.config.get_module_configs(module)
         if len(configs) == 0:
-            await ctx.send(f'Aucune configuration pour le module **{module_name}**')
+            await ctx.send(f'Aucune configuration pour le module **{module}**')
         else:
             for config in configs:
                 description += config_to_string(configs[config], ctx)
-            embed = Embed(title=f'Configuration du module **{module_name}**:', colour=Colour(0xFABC20),
+            embed = Embed(title=f'Configuration du module **{module}**:', colour=Colour(0xFABC20),
                           description=description)
             if any(configs[c].required for c in configs):
                 embed.set_footer(text="* Paramètre requis")
@@ -63,24 +69,26 @@ class ConfigModule(commands.Cog):
 
     @config.command("reset")
     async def reset_config(self, ctx, module_name, config_name):
-        if module_name not in [e[8:] for e in self.bot.extensions]:
+        module = get_real_module_name(self.bot, module_name)
+        if module is None:
             await ctx.send(f'Module **{module_name}** invalide.')
             return
-        configs = self.bot.config.get_module_configs(module_name)
+        configs = self.bot.config.get_module_configs(module)
         if config_name not in configs:
             await ctx.send(f'Paramètre **{config_name}** invalide.')
             return
         del configs[config_name][ctx.guild.id]
         await ctx.send(f'Paramètre **{config_name}** reinitialisé.')
-        if self.bot.config.has_missing_required_config(ctx.guild.id, module_name):
-            self.bot.config.set("_enabled", ctx.guild.id, False, module_name)
+        if self.bot.config.has_missing_required_config(ctx.guild.id, module):
+            self.bot.config.set("_enabled", ctx.guild.id, False, module)
 
     @config.command("set")
     async def set_config(self, ctx, module_name, config_name, arg):
-        if module_name not in [e[8:] for e in self.bot.extensions]:
+        module = get_real_module_name(self.bot, module_name)
+        if module is None:
             await ctx.send(f'Module **{module_name}** invalide.')
             return
-        configs = self.bot.config.get_module_configs(module_name)
+        configs = self.bot.config.get_module_configs(module)
         if config_name not in configs:
             await ctx.send(f'Paramètre **{config_name}** invalide.')
             return
@@ -115,3 +123,7 @@ class ConfigModule(commands.Cog):
     async def prefix_set(self, ctx: Context, value):
         self.bot.prefix[ctx.guild.id] = value
         await ctx.send(f'Le préfixe a été modifié pour **{value}**.')
+
+
+def get_real_module_name(bot, module_name):
+    return next((e[8:] for e in bot.extensions if e[8:].lower() == module_name.lower()), None)
