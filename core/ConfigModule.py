@@ -23,7 +23,7 @@ class ConfigModule(commands.Cog):
         if len(description) == 0:
             await ctx.send("Aucun module disponible.")
         else:
-            embed = Embed(title="Liste des modules:", colour=Colour(0xFABC20),
+            embed = Embed(title="Liste des modules:", colour=Colour(0xD44594),
                           description=description)
             await ctx.send(embed=embed)
 
@@ -61,7 +61,7 @@ class ConfigModule(commands.Cog):
         else:
             for config in configs:
                 description += config_to_string(configs[config], ctx)
-            embed = Embed(title=f'Configuration du module **{module}**:', colour=Colour(0xFABC20),
+            embed = Embed(title=f'Configuration du module **{module}**:', colour=Colour(0xD44594),
                           description=description)
             if any(configs[c].required for c in configs):
                 embed.set_footer(text="* Paramètre requis")

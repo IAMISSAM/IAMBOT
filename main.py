@@ -15,7 +15,7 @@ bot = IAMBOT(
     command_prefix=get_prefix,
     case_insensitive=True,
     owner_id=853589947209482281,
-    intents=discord.Intents.default()
+    intents=discord.Intents.all()
 )
 
 if __name__ == '__main__':

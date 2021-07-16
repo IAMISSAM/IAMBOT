@@ -1,3 +1,5 @@
+import collections
+import contextlib
 import json
 from enum import Enum
 
@@ -10,7 +12,7 @@ class ConfigType(Enum):
     CHANNEL = 5
 
 
-class Config(dict):
+class Config(collections.UserDict):
     def __init__(self, config_db, name, config_type=ConfigType.STR, default=None, required=False, description=None,
                  module=None):
         super().__init__()
@@ -41,10 +43,8 @@ class Config(dict):
             return self.default
 
     def __setitem__(self, key, value):
-        try:
+        with contextlib.suppress(KeyError):
             self.config_db.set(self.name, key, value, self.module)
-        except KeyError:
-            pass
 
 
 class ConfigDatabase:
@@ -109,10 +109,7 @@ class ConfigDatabase:
         return False
 
     def get_module_configs(self, module):
-        if module not in self._configs:
-            return {}
-        else:
-            return self._configs[module]
+        return self._configs.get(module, {})
 
 
 def config_to_string(config: Config, ctx):
